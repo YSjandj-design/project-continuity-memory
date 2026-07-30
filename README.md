@@ -202,8 +202,7 @@ repository rather than a giant always-loaded manual, as described in OpenAI's
 
 ## Status
 
-Version 0.1.0 is a validated release candidate. The public repository is prepared
-for publication at
+Version 0.1.0 is a validated release candidate, published at
 [YSjandj-design/project-continuity-memory](https://github.com/YSjandj-design/project-continuity-memory).
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes and

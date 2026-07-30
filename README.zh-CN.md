@@ -157,8 +157,9 @@ python3 project-continuity-memory/scripts/pcm.py check \
 6. 用真实接力点重写 `HANDOFF.md`，不把它无限追加成聊天日记。
 7. 运行严格校验。
 
-版本 0.1.0 已完成本地发布候选验收。详细变化见
-[CHANGELOG.md](CHANGELOG.md)，参与方式见
+版本 0.1.0 发布候选版已经完成验收，并公开发布于
+[YSjandj-design/project-continuity-memory](https://github.com/YSjandj-design/project-continuity-memory)。
+详细变化见 [CHANGELOG.md](CHANGELOG.md)，参与方式见
 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可证
