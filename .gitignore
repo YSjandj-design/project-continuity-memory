@@ -1,0 +1,29 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+dist/
+build/
+*.local.*
+
+# Private project continuity and agent instructions: never publish.
+AGENTS.md
+**/AGENTS.md
+PROJECT_MEMORY.md
+**/PROJECT_MEMORY.md
+HANDOFF.md
+**/HANDOFF.md
+.project-memory/
+**/.project-memory/
+
+# Private backups and local exports.
+backup/
+backups/
+**/backup/
+**/backups/
+*.bak
+*.backup

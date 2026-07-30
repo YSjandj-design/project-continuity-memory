@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Continuity Memory"
+  short_description: "Maintain compact, verifiable project continuity across agent tasks"
+  default_prompt: "Use $project-continuity-memory to resume this project from its verified current state and update its handoff when done."
