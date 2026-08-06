@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Added
+
+- Explicit continuity-scope rules for multi-project workspaces and nested child
+  projects.
+- A `pcm.py scope` resolver that blocks orphaned parent handoffs, workspace
+  fallback, and mismatched declared roots.
+- Regression coverage for child-project isolation and safe parent inheritance.
+
+### Changed
+
+- Continuity files are now treated as a co-located pair rather than selecting
+  the nearest ancestor containing either file.
+
 ## 0.1.0 - 2026-07-30
 
 ### Added

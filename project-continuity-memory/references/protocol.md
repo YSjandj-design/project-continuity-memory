@@ -29,6 +29,24 @@ individual project state there.
 - blockers, open questions, and exact next actions;
 - protected files, backups, and recovery entry points.
 
+### Scope binding
+
+The two files are a co-located pair. Their directory is the continuity scope;
+the files do not automatically describe every project below that directory.
+`PROJECT_MEMORY.md` should declare one of these values under project identity:
+
+- `Project kind: single-project` — descendants may inherit this state when they
+  are ordinary source or document directories and no nearer scope boundary is
+  present.
+- `Project kind: workspace` — the directory contains multiple projects; each
+  child project must own its own `PROJECT_MEMORY.md` and `HANDOFF.md`. The
+  workspace handoff never supplies a child's story, settings, or next action.
+
+If an ancestor contains only one of the two files, treat it as an orphaned
+continuity boundary. Do not use it for a descendant. Stop and create or specify
+the child project's paired scope. This rule is intentionally conservative: a
+stale handoff for one child must never become another child's context.
+
 ### Fact and evidence layer
 
 Source code, documents, data, tests, task systems, ADRs, plans, exports, and
@@ -40,13 +58,23 @@ requires them.
 Choose one root using this precedence:
 
 1. The project path explicitly specified by the user.
-2. The nearest parent containing `PROJECT_MEMORY.md` or `HANDOFF.md`.
+2. The nearest directory containing the co-located pair
+   `PROJECT_MEMORY.md` and `HANDOFF.md`.
 3. A root declared by project-local agent instructions.
 4. A Git root, project manifest, or clear workspace marker.
 5. The current working directory.
 
-In a large workspace, the nearest independent project's continuity files win.
-Do not inject parent-workspace state into a child project that has its own state.
+Before reading the pair, lock the scope as `(requested path, continuity root,
+project kind)`. If the requested path is nested under a `workspace` root, do not
+inherit the workspace pair; require a child pair. If the requested path crosses
+an orphaned continuity boundary, stop with a scope error. In a large workspace,
+the nearest independent child project's pair wins, and a parent handoff is not
+allowed to fill a missing child scope.
+
+For backward-compatible files that do not yet declare `Project kind`, use them
+only when the requested path is the exact pair directory. Add the declaration
+before allowing nested-path inheritance. If `PROJECT_MEMORY.md` declares an
+absolute `Root`, it must resolve to the continuity root selected above.
 
 ## 3. Recovery chain
 
@@ -65,6 +93,9 @@ Before work, distinguish:
 - state that still needs verification;
 - decisions already made by the user;
 - the direct next action.
+
+Record the locked scope in the internal task summary and verify that every
+memory read, fact source, handoff write, and next action belongs to that scope.
 
 Do not read or repeat unrelated history to perform familiarity.
 

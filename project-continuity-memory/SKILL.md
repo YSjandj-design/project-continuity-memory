@@ -20,6 +20,12 @@ small verified state, perform the work, then write back only the useful delta.
 - `.project-memory/history/`: optional milestone snapshots that are not part of
   the default recovery chain.
 
+The two continuity files are a co-located scope pair. Under project identity,
+declare `Project kind: single-project` for a normal project or
+`Project kind: workspace` when one directory contains multiple child projects.
+Workspace children must own their own pair; a parent handoff is never a safe
+fallback for a child project.
+
 These files are a map and handoff, not a second source of truth. Source code,
 documents, data, ADRs, plans, tests, task systems, and external state remain
 authoritative.
@@ -28,11 +34,23 @@ authoritative.
 
 1. Locate one project root.
    - Prefer the path explicitly given by the user.
-   - Otherwise use the nearest parent containing `PROJECT_MEMORY.md` or
+   - Otherwise use the nearest directory containing both `PROJECT_MEMORY.md` and
      `HANDOFF.md`.
    - Otherwise use the clear repository or workspace root.
    - Ask only when different roots would materially change writes and current
      state cannot resolve the ambiguity.
+   - Never inherit an ancestor's lone `PROJECT_MEMORY.md` or `HANDOFF.md`.
+     Treat it as an orphaned boundary and stop with a scope error.
+   - If the selected ancestor is a `workspace`, require a paired child scope;
+     do not read the workspace handoff as child-project context.
+   - For older files without `Project kind`, allow them only when the requested
+     path is exactly their directory; add the declaration before nested-path
+     inheritance.
+   - If `PROJECT_MEMORY.md` declares an absolute `Root`, verify that it matches
+     the selected continuity directory.
+   - When the bundled `pcm.py` is available, run
+     `python3 <skill-dir>/scripts/pcm.py scope --path <requested-path>` before
+     reading project-specific state; a non-zero result is a stop condition.
 2. Decide whether continuity applies.
    - Resume, handoff, modification, creation, migration, deployment, writing,
      validation, or paused multi-step work: use this workflow.
@@ -40,6 +58,8 @@ authoritative.
      create or update continuity files.
 3. Recover context.
    - Read `PROJECT_MEMORY.md` and `HANDOFF.md` completely.
+   - Lock `(requested path, continuity root, project kind)` before opening
+     project-specific sources; keep all reads and writes inside that scope.
    - Open only the 1–5 fact sources directly relevant to the current objective.
    - Verify paths, artifacts, task state, and cited evidence.
    - Correct stale continuity state before following it.

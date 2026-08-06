@@ -11,6 +11,10 @@ Project Continuity Memory 是一套本地优先、仓库原生的 AI Agent 项�
 - `PROJECT_MEMORY.md`：保存跨任务稳定有效的项目认知。
 - `HANDOFF.md`：保存当前目标、已验证进度、阻塞、证据和精确下一步。
 
+这两份文件必须在同一目录，组成一个连续性范围。一个目录里如果包含多个独立
+子项目，应在记忆文件中声明 `Project kind: workspace`；每个子项目都必须拥有
+自己的两份文件，父目录的 handoff 不得被静默当成子项目上下文。
+
 配套 Agent Skill 规定何时读取、如何处理陈旧状态以及收尾时写回什么；验证脚本
 负责控制结构、篇幅和接力完整性。
 
@@ -147,15 +151,36 @@ python3 project-continuity-memory/scripts/pcm.py check \
   --strict
 ```
 
+## 多子项目工作区
+
+如果一个文件夹里放着多个独立项目，应把它当作工作区处理，而不是某一个项目的根：
+
+1. 工作区根目录的 `PROJECT_MEMORY.md` 与 `HANDOFF.md` 只记录工作区层面的协调状态。
+2. 在工作区记忆文件中设置 `Project kind: workspace`。
+3. 每个子项目都建立自己的一对文件，并使用自己的项目名。
+4. 任务明确指向某个子项目路径时，只恢复该子项目的文件；不能回退到父目录
+   handoff。如果祖先目录只有其中一份文件，也必须停下报范围错误。
+
+可以在 Agent 读取项目状态前运行内置范围解析器：
+
+```bash
+python3 project-continuity-memory/scripts/pcm.py scope \
+  --path /path/to/requested/project
+```
+
+返回非零结果表示连续性范围有问题，不表示可以猜测。应先为子项目创建成对文件，
+或明确指定准确的项目根目录。
+
 ## 恢复链路
 
-1. 完整读取 `PROJECT_MEMORY.md` 和 `HANDOFF.md`。
-2. 只打开与当前目标直接相关的 1–5 个事实源。
-3. 以用户最新指令和可验证现状优先处理冲突。
-4. 执行工作。
-5. 只把稳定、已核验的知识晋升到 `PROJECT_MEMORY.md`。
-6. 用真实接力点重写 `HANDOFF.md`，不把它无限追加成聊天日记。
-7. 运行严格校验。
+1. 先把任务路径锁定到一个连续性范围。
+2. 完整读取该范围内的 `PROJECT_MEMORY.md` 和 `HANDOFF.md`。
+3. 只打开与当前目标直接相关的 1–5 个事实源。
+4. 以用户最新指令和可验证现状优先处理冲突。
+5. 执行工作。
+6. 只把稳定、已核验的知识晋升到 `PROJECT_MEMORY.md`。
+7. 用真实接力点重写 `HANDOFF.md`，不把它无限追加成聊天日记。
+8. 运行严格校验。
 
 版本 0.1.0 发布候选版已经完成验收，并公开发布于
 [YSjandj-design/project-continuity-memory](https://github.com/YSjandj-design/project-continuity-memory)。

@@ -7,6 +7,7 @@
 
 - Project: {{PROJECT_NAME}}
 - Root: `{{PROJECT_ROOT}}`
+- Project kind: single-project
 - Last verified: {{DATE}}
 - Status: active
 

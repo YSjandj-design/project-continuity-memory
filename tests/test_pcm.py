@@ -87,6 +87,18 @@ class PcmCliTests(unittest.TestCase):
         payload = json.loads(result.stdout)
         return result, payload
 
+    def write_scope_pair(self, root: Path, kind: str) -> None:
+        memory = COMPLETE_PROJECT_MEMORY.replace(
+            "## Project identity\n- Project: Example",
+            (
+                "## Project identity\n"
+                f"- Project: Example\n- Root: `{root.resolve()}`\n"
+                f"- Project kind: {kind}"
+            ),
+        )
+        (root / "PROJECT_MEMORY.md").write_text(memory, encoding="utf-8")
+        (root / "HANDOFF.md").write_text(COMPLETE_HANDOFF, encoding="utf-8")
+
     def test_init_creates_both_files(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             result, payload = self.run_cli(
@@ -98,6 +110,10 @@ class PcmCliTests(unittest.TestCase):
             )
             self.assertNotIn(
                 "{{",
+                (Path(root) / "PROJECT_MEMORY.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "- Project kind: single-project",
                 (Path(root) / "PROJECT_MEMORY.md").read_text(encoding="utf-8"),
             )
 
@@ -157,6 +173,83 @@ class PcmCliTests(unittest.TestCase):
                 item for item in payload["files"] if item["file"] == "HANDOFF.md"
             )
             self.assertEqual(handoff["errors"], ["missing"])
+
+    def test_scope_resolves_single_project_descendant(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_scope_pair(root, "single-project")
+            child = root / "docs"
+            child.mkdir()
+
+            result, payload = self.run_cli("scope", "--path", str(child))
+
+            self.assertEqual(result.returncode, 0)
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["status"], "resolved")
+            self.assertEqual(payload["scope"], str(root.resolve()))
+
+    def test_scope_blocks_orphaned_parent_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "HANDOFF.md").write_text(COMPLETE_HANDOFF, encoding="utf-8")
+            child = root / "story-a"
+            child.mkdir()
+
+            result, payload = self.run_cli("scope", "--path", str(child))
+
+            self.assertEqual(result.returncode, 1)
+            self.assertFalse(payload["ok"])
+            self.assertEqual(payload["status"], "blocked_by_orphan")
+            self.assertIn(str(root.resolve()), payload["orphan_scopes"])
+
+    def test_scope_prefers_child_pair_over_orphan_parent_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "HANDOFF.md").write_text(COMPLETE_HANDOFF, encoding="utf-8")
+            child = root / "story-a"
+            child.mkdir()
+            self.write_scope_pair(child, "single-project")
+
+            result, payload = self.run_cli("scope", "--path", str(child))
+
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(payload["status"], "resolved")
+            self.assertEqual(payload["scope"], str(child.resolve()))
+
+    def test_scope_requires_child_pair_under_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_scope_pair(root, "workspace")
+            child = root / "story-a"
+            child.mkdir()
+
+            result, payload = self.run_cli("scope", "--path", str(child))
+
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(payload["status"], "workspace_requires_child_scope")
+
+            self.write_scope_pair(child, "single-project")
+            result, payload = self.run_cli("scope", "--path", str(child))
+
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(payload["scope"], str(child.resolve()))
+
+    def test_scope_rejects_mismatched_declared_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_scope_pair(root, "single-project")
+            memory = root / "PROJECT_MEMORY.md"
+            memory.write_text(
+                memory.read_text(encoding="utf-8").replace(
+                    f"- Root: `{root.resolve()}`", "- Root: `/workspace/other`"
+                ),
+                encoding="utf-8",
+            )
+
+            result, payload = self.run_cli("scope", "--path", str(root))
+
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(payload["status"], "declared_root_mismatch")
 
 
 if __name__ == "__main__":

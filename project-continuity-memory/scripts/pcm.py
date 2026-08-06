@@ -58,6 +58,10 @@ EMPTY_LABEL = re.compile(
     r"Backup or rollback entry):\s*$",
     re.IGNORECASE,
 )
+PROJECT_KIND = re.compile(
+    r"(?im)^-\s*Project kind:\s*(?P<kind>[^#\r\n]+?)\s*$"
+)
+DECLARED_ROOT = re.compile(r"(?im)^-\s*Root:\s*`(?P<root>[^`]+)`\s*$")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -83,6 +87,16 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Treat unresolved or empty fields and size warnings as failures.",
     )
+
+    scope = sub.add_parser(
+        "scope",
+        help="Resolve the project scope for a directory or file without inheriting unsafe parent state.",
+    )
+    scope.add_argument(
+        "--path",
+        required=True,
+        help="Directory or file inside the project to resolve.",
+    )
     return result
 
 
@@ -91,6 +105,148 @@ def resolve_root(raw: str) -> Path:
     if not root.is_dir():
         raise ValueError(f"Project root does not exist or is not a directory: {root}")
     return root
+
+
+def resolve_scope_target(raw: str) -> Path:
+    target = Path(raw).expanduser().resolve()
+    if target.is_file():
+        target = target.parent
+    if not target.is_dir():
+        raise ValueError(
+            f"Scope path does not exist or is not a directory/file: {target}"
+        )
+    return target
+
+
+def project_kind(memory_path: Path) -> str | None:
+    match = PROJECT_KIND.search(memory_path.read_text(encoding="utf-8"))
+    if not match:
+        return None
+    value = re.sub(r"\s+", "-", match.group("kind").strip().lower())
+    if value in {"single-project", "workspace"}:
+        return value
+    return "unknown"
+
+
+def declared_project_root(memory_path: Path) -> Path | None:
+    match = DECLARED_ROOT.search(memory_path.read_text(encoding="utf-8"))
+    if not match:
+        return None
+    value = match.group("root").strip()
+    if value in {".", "./"}:
+        return None
+    candidate = Path(value).expanduser()
+    if not candidate.is_absolute():
+        return None
+    return candidate.resolve()
+
+
+def resolve_scope(raw: str) -> dict[str, object]:
+    """Resolve a requested path to a safe continuity scope.
+
+    A co-located PROJECT_MEMORY.md/HANDOFF.md pair is the only reusable scope
+    boundary. A lone file in an ancestor is treated as an orphan boundary and
+    blocks inheritance, preventing one child project's handoff from leaking
+    into a sibling project. Workspace roots also require each child project to
+    own its own pair.
+    """
+
+    target = resolve_scope_target(raw)
+    orphan_scopes: list[str] = []
+    current = target
+
+    while True:
+        memory_path = current / "PROJECT_MEMORY.md"
+        handoff_path = current / "HANDOFF.md"
+        has_memory = memory_path.is_file()
+        has_handoff = handoff_path.is_file()
+
+        if has_memory and has_handoff:
+            if orphan_scopes:
+                return {
+                    "ok": False,
+                    "status": "blocked_by_orphan",
+                    "target": str(target),
+                    "scope": None,
+                    "orphan_scopes": orphan_scopes,
+                    "reason": (
+                        "An ancestor contains an unpaired continuity file; do "
+                        "not inherit past it without an explicit project path."
+                    ),
+                }
+
+            kind = project_kind(memory_path)
+            if current != target and kind == "workspace":
+                return {
+                    "ok": False,
+                    "status": "workspace_requires_child_scope",
+                    "target": str(target),
+                    "scope": str(current),
+                    "project_kind": kind,
+                    "reason": (
+                        "A workspace root does not provide child-project state; "
+                        "the requested child must own a continuity pair."
+                    ),
+                }
+            if current != target and kind != "single-project":
+                return {
+                    "ok": False,
+                    "status": "scope_kind_required",
+                    "target": str(target),
+                    "scope": str(current),
+                    "project_kind": kind,
+                    "reason": (
+                        "A nested path may inherit only from a declared "
+                        "single-project root."
+                    ),
+                }
+
+            declared_root = declared_project_root(memory_path)
+            if declared_root is not None and declared_root != current:
+                return {
+                    "ok": False,
+                    "status": "declared_root_mismatch",
+                    "target": str(target),
+                    "scope": str(current),
+                    "declared_root": str(declared_root),
+                    "reason": "PROJECT_MEMORY.md declares a different project root.",
+                }
+
+            return {
+                "ok": True,
+                "status": "resolved",
+                "target": str(target),
+                "scope": str(current),
+                "project_kind": kind or "unspecified",
+                "reason": "Using the co-located continuity pair for this project scope.",
+            }
+
+        if has_memory or has_handoff:
+            orphan_scopes.append(str(current))
+
+        if current.parent == current:
+            break
+        current = current.parent
+
+    if orphan_scopes:
+        return {
+            "ok": False,
+            "status": "blocked_by_orphan",
+            "target": str(target),
+            "scope": None,
+            "orphan_scopes": orphan_scopes,
+            "reason": (
+                "A parent contains an unpaired continuity file; create a "
+                "paired scope for this project instead of inheriting it."
+            ),
+        }
+    return {
+        "ok": False,
+        "status": "not_found",
+        "target": str(target),
+        "scope": None,
+        "reason": "No co-located PROJECT_MEMORY.md/HANDOFF.md pair was found.",
+    }
 
 
 def atomic_create(path: Path, content: str) -> None:
@@ -240,13 +396,16 @@ def check_files(root: Path, strict: bool) -> dict[str, object]:
 def main() -> int:
     args = parser().parse_args()
     try:
-        root = resolve_root(args.root)
+        if args.command == "scope":
+            result = resolve_scope(args.path)
+        else:
+            root = resolve_root(args.root)
         if args.command == "init":
             name = (args.project_name or root.name).strip()
             if not name:
                 raise ValueError("Project name must not be empty.")
             result = init_files(root, name)
-        else:
+        elif args.command == "check":
             result = check_files(root, args.strict)
     except (OSError, ValueError) as error:
         print(json.dumps({"ok": False, "error": str(error)}, indent=2))

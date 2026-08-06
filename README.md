@@ -14,6 +14,11 @@ It uses two small files:
 - `HANDOFF.md` stores the current objective, verified progress, blockers, evidence,
   and exact next action.
 
+The files are a co-located pair for one continuity scope. A directory that
+contains multiple child projects must declare `Project kind: workspace` in its
+memory file; each child then owns its own pair. A parent handoff is never
+silently reused as a child's context.
+
 The bundled Agent Skill teaches compatible agents when to read them, how to resolve
 stale state, and what to write back. The bundled validator keeps the files compact
 and rejects incomplete handoffs.
@@ -186,15 +191,40 @@ python3 project-continuity-memory/scripts/pcm.py check \
   --strict
 ```
 
+### Multi-project workspaces
+
+If one folder contains several independent projects, treat the folder as a
+workspace rather than as one project's root:
+
+1. Keep a paired `PROJECT_MEMORY.md` and `HANDOFF.md` at the workspace root
+   only for workspace-level coordination.
+2. Set `Project kind: workspace` in the workspace memory file.
+3. Give every child project its own co-located pair and its own project name.
+4. When a task names a child path, recover only that child's pair. Do not fall
+   back to a parent handoff, and stop if an ancestor contains only one of the
+   two files.
+
+The bundled resolver can check this boundary before an agent reads project
+state:
+
+```bash
+python3 project-continuity-memory/scripts/pcm.py scope \
+  --path /path/to/requested/project
+```
+
+A non-zero result is a scope error, not permission to guess. Create the child
+pair or specify the exact project root before continuing.
+
 ## The recovery chain
 
-1. Read `PROJECT_MEMORY.md` and `HANDOFF.md` completely.
-2. Open only the 1–5 fact sources relevant to the current objective.
-3. Resolve conflicts using current instructions and verifiable state first.
-4. Perform the work.
-5. Promote only durable, verified knowledge to `PROJECT_MEMORY.md`.
-6. Rewrite `HANDOFF.md` to the true current handoff instead of appending a diary.
-7. Run the strict validator.
+1. Lock the requested path to one continuity scope.
+2. Read that scope's `PROJECT_MEMORY.md` and `HANDOFF.md` completely.
+3. Open only the 1–5 fact sources relevant to the current objective.
+4. Resolve conflicts using current instructions and verifiable state first.
+5. Perform the work.
+6. Promote only durable, verified knowledge to `PROJECT_MEMORY.md`.
+7. Rewrite `HANDOFF.md` to the true current handoff instead of appending a diary.
+8. Run the strict validator.
 
 This follows the broader agent-engineering principle of giving agents a map to the
 repository rather than a giant always-loaded manual, as described in OpenAI's
