@@ -23,6 +23,27 @@ The bundled Agent Skill teaches compatible agents when to read them, how to reso
 stale state, and what to write back. The bundled validator keeps the files compact
 and rejects incomplete handoffs.
 
+## 2.0 update: from one project to many scopes
+
+The 1.0 protocol solved cold-start recovery for a single project. The 2.0
+protocol line adds explicit scope isolation for repositories and workspaces that
+contain multiple independent projects:
+
+| Capability | 1.0 | 2.0 |
+|---|---|---|
+| Project model | Implicitly treats a root as one project | Distinguishes `single-project` and `workspace` roots |
+| Scope resolution | May select the nearest directory containing either continuity file | Requires a co-located `PROJECT_MEMORY.md` + `HANDOFF.md` pair |
+| Child projects | Parent state can be mistaken for child context | Each child project owns its own continuity pair |
+| Parent fallback | An orphan handoff can become accidental context | Orphaned parent state blocks inheritance |
+| Recovery order | Read memory and handoff, then inspect sources | Resolve and lock `(requested path, root, project kind)` first |
+| Validation | Structure, placeholders, and size | Scope resolver, declared-root checks, and regression tests |
+| Failure behavior | Best-effort recovery | Fail closed when the project boundary is ambiguous |
+
+The key 2.0 change is scope safety: identify which project the task belongs to
+before recovering what that project knows. The current package remains a `0.1.0`
+release candidate; “2.0” describes this protocol evolution, not a formal SemVer
+tag yet.
+
 ## Why this exists
 
 Every long-running agent workflow eventually hits a cold start: a new task, a new
@@ -234,6 +255,8 @@ repository rather than a giant always-loaded manual, as described in OpenAI's
 
 Version 0.1.0 is a validated release candidate, published at
 [YSjandj-design/project-continuity-memory](https://github.com/YSjandj-design/project-continuity-memory).
+The `main` branch also contains the 2.0 scope-aware protocol update described
+above; no formal 2.0 tag has been created.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes and
 [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.

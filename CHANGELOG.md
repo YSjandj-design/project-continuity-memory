@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - A `pcm.py scope` resolver that blocks orphaned parent handoffs, workspace
   fallback, and mismatched declared roots.
 - Regression coverage for child-project isolation and safe parent inheritance.
+- README comparison of the 1.0 and 2.0 protocol lines.
 
 ### Changed
 

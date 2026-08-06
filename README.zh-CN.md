@@ -18,6 +18,24 @@ Project Continuity Memory 是一套本地优先、仓库原生的 AI Agent 项�
 配套 Agent Skill 规定何时读取、如何处理陈旧状态以及收尾时写回什么；验证脚本
 负责控制结构、篇幅和接力完整性。
 
+## 2.0 更新：从“单项目接力”到“多范围连续性”
+
+1.0 解决了单个项目的冷启动恢复；2.0 增加了面向多子项目仓库和工作区的明确范围隔离：
+
+| 能力 | 1.0 | 2.0 |
+|---|---|---|
+| 项目模型 | 默认把一个根目录当成一个项目 | 区分 `single-project` 与 `workspace` |
+| 范围定位 | 可能选择最近含任一连续性文件的目录 | 必须找到同目录下成对的 `PROJECT_MEMORY.md` 与 `HANDOFF.md` |
+| 子项目 | 父级状态可能被误当成子项目上下文 | 每个子项目拥有自己的连续性文件对 |
+| 父级回退 | 孤立 handoff 可能意外成为上下文 | 孤立父级状态直接阻断继承 |
+| 恢复顺序 | 先读记忆和 handoff，再找事实源 | 先锁定“请求路径、根目录、项目类型”，再恢复状态 |
+| 验证方式 | 结构、占位符和篇幅检查 | 范围解析器、Root 一致性检查和回归测试 |
+| 模糊情况 | 尽力恢复 | 范围不明确时失败即停，不猜测 |
+
+2.0 的关键变化是范围安全：先确认任务属于哪个项目，再恢复这个项目知道什么。
+当前包仍是 `0.1.0` 发布候选版；这里的“2.0”表示协议能力演进，并非已经创建了
+正式的 SemVer 2.0 tag。
+
 ## 它解决的不是“记住所有聊天”
 
 所有长期 Agent 项目迟早都会遇到一次冷启动：新任务、新窗口、模型切换、上下文
@@ -184,6 +202,7 @@ python3 project-continuity-memory/scripts/pcm.py scope \
 
 版本 0.1.0 发布候选版已经完成验收，并公开发布于
 [YSjandj-design/project-continuity-memory](https://github.com/YSjandj-design/project-continuity-memory)。
+`main` 分支同时包含上文所述的 2.0 范围感知协议更新；目前尚未创建正式的 2.0 tag。
 详细变化见 [CHANGELOG.md](CHANGELOG.md)，参与方式见
 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
