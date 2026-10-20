@@ -28,8 +28,8 @@ FILES = {
         ),
         "warn_lines": 160,
         "max_lines": 240,
-        "warn_chars": 8000,
-        "max_chars": 12000,
+        "warn_chars": 10000,
+        "max_chars": 14000,
     },
     "HANDOFF.md": {
         "asset": "handoff-template.md",
@@ -48,8 +48,8 @@ FILES = {
         ),
         "warn_lines": 100,
         "max_lines": 140,
-        "warn_chars": 4000,
-        "max_chars": 6000,
+        "warn_chars": 6000,
+        "max_chars": 8000,
     },
 }
 

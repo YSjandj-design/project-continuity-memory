@@ -37,8 +37,8 @@ Please include:
 - confirmation that no private paths, credentials, or real project data were added.
 
 Pull requests fail when they include real continuity files, agent instruction
-files, backups, user paths, personal email addresses, private-name markers, or
-external symlinks. Use fictional fixtures only.
+files, backups, user paths, personal email addresses, configured private-name
+markers, or external symlinks. Use fictional fixtures only.
 
 Large additions such as databases, embeddings, hosted services, or automatic
 transcript capture should be proposed as optional integrations, not added to the

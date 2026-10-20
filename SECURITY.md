@@ -20,7 +20,8 @@ state. `scripts/check_public_release.py` rejects:
 - `AGENTS.md`, `PROJECT_MEMORY.md`, and `HANDOFF.md`;
 - backup directories and backup files;
 - macOS, Linux, or Windows user-home paths;
-- personal email addresses and private-name markers;
+- personal email addresses and any private-name markers supplied through
+  `--private-name`;
 - private-key material;
 - symlinks that resolve outside the repository.
 

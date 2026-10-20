@@ -174,6 +174,44 @@ class PcmCliTests(unittest.TestCase):
             )
             self.assertEqual(handoff["errors"], ["missing"])
 
+    def test_character_budgets_match_documented_thresholds(self) -> None:
+        cases = (
+            ("PROJECT_MEMORY.md", COMPLETE_PROJECT_MEMORY, 10000, 14000),
+            ("HANDOFF.md", COMPLETE_HANDOFF, 6000, 8000),
+        )
+        with tempfile.TemporaryDirectory() as root:
+            for filename, complete, warning_limit, hard_limit in cases:
+                content = complete + ("x" * (warning_limit + 1 - len(complete)))
+                Path(root, filename).write_text(content, encoding="utf-8")
+                other_name, other_content = (
+                    ("HANDOFF.md", COMPLETE_HANDOFF)
+                    if filename == "PROJECT_MEMORY.md"
+                    else ("PROJECT_MEMORY.md", COMPLETE_PROJECT_MEMORY)
+                )
+                Path(root, other_name).write_text(other_content, encoding="utf-8")
+
+                result, payload = self.run_cli("check", "--root", root)
+                self.assertEqual(result.returncode, 0)
+                checked = next(
+                    item for item in payload["files"] if item["file"] == filename
+                )
+                self.assertIn(
+                    f"character budget exceeded: {warning_limit + 1}>{warning_limit}",
+                    checked["warnings"],
+                )
+
+                content = complete + ("x" * (hard_limit + 1 - len(complete)))
+                Path(root, filename).write_text(content, encoding="utf-8")
+                result, payload = self.run_cli("check", "--root", root)
+                self.assertEqual(result.returncode, 1)
+                checked = next(
+                    item for item in payload["files"] if item["file"] == filename
+                )
+                self.assertIn(
+                    f"character hard limit exceeded: {hard_limit + 1}>{hard_limit}",
+                    checked["errors"],
+                )
+
     def test_scope_resolves_single_project_descendant(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -164,7 +164,8 @@ The public release must not contain:
 
 All templates and test fixtures are fictional. CI runs
 `scripts/check_public_release.py` to enforce this boundary on every push and pull
-request.
+request. For an additional local or CI-specific name check, pass each marker as
+`--private-name`; the public checker never embeds a real person's name.
 
 ## Install
 

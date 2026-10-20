@@ -130,7 +130,8 @@ Project Continuity Memory 把这些问题变成一份小型、可版本控制、
 - 指向仓库外部的软链接
 
 所有模板和测试数据必须完全虚构。每次提交和 PR 都会运行
-`scripts/check_public_release.py` 执行隐私门禁。
+`scripts/check_public_release.py` 执行隐私门禁。如需在本地或 CI 中额外检查姓名，
+可重复传入 `--private-name`；公开检查器本身不内置任何真实姓名。
 
 ## 安装与使用
 

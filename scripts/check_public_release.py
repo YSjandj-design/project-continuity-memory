@@ -12,7 +12,6 @@ from pathlib import Path
 FORBIDDEN_BASENAMES = {"AGENTS.md", "PROJECT_MEMORY.md", "HANDOFF.md"}
 FORBIDDEN_DIRECTORY_NAMES = {".project-memory", "backup", "backups"}
 FORBIDDEN_SUFFIXES = {".bak", ".backup"}
-SELF = Path("scripts/check_public_release.py")
 
 CONTENT_PATTERNS = (
     ("macOS user-home path", re.compile(rb"/Users/[A-Za-z0-9._-]+")),
@@ -28,12 +27,34 @@ CONTENT_PATTERNS = (
             rb"[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?![A-Za-z0-9.-])"
         ),
     ),
-    ("private-name marker", re.compile(rb"\bPRIVATE_NAME\b", re.IGNORECASE)),
     (
         "private-key material",
         re.compile(rb"BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY"),
     ),
 )
+
+
+def private_name_patterns(
+    markers: list[str],
+) -> tuple[tuple[str, re.Pattern[bytes]], ...]:
+    patterns: list[tuple[str, re.Pattern[bytes]]] = []
+    for marker in markers:
+        normalized = marker.strip()
+        if not normalized:
+            continue
+        encoded = normalized.encode("utf-8")
+        patterns.append(
+            (
+                "configured private-name marker",
+                re.compile(
+                    rb"(?<![A-Za-z0-9._-])"
+                    + re.escape(encoded)
+                    + rb"(?![A-Za-z0-9._-])",
+                    re.IGNORECASE,
+                ),
+            )
+        )
+    return tuple(patterns)
 
 
 def tracked_paths(root: Path) -> list[Path]:
@@ -50,9 +71,14 @@ def tracked_paths(root: Path) -> list[Path]:
     ]
 
 
-def scan_repository(root: Path, paths: list[Path]) -> list[str]:
+def scan_repository(
+    root: Path, paths: list[Path], private_names: list[str] | None = None
+) -> list[str]:
     findings: list[str] = []
     resolved_root = root.resolve()
+    content_patterns = CONTENT_PATTERNS + private_name_patterns(
+        private_names or []
+    )
 
     for relative in paths:
         parts = set(relative.parts)
@@ -70,11 +96,11 @@ def scan_repository(root: Path, paths: list[Path]) -> list[str]:
                 findings.append(f"{relative}: symlink resolves outside repository")
             continue
 
-        if not target.is_file() or relative == SELF:
+        if not target.is_file():
             continue
 
         data = target.read_bytes()
-        for label, pattern in CONTENT_PATTERNS:
+        for label, pattern in content_patterns:
             if pattern.search(data):
                 findings.append(f"{relative}: contains {label}")
 
@@ -90,13 +116,22 @@ def parser() -> argparse.ArgumentParser:
         default=".",
         help="Git repository root. Defaults to the current directory.",
     )
+    result.add_argument(
+        "--private-name",
+        action="append",
+        default=[],
+        help=(
+            "Additional private name marker to reject; may be supplied more "
+            "than once."
+        ),
+    )
     return result
 
 
 def main() -> int:
     args = parser().parse_args()
     root = Path(args.root).resolve()
-    findings = scan_repository(root, tracked_paths(root))
+    findings = scan_repository(root, tracked_paths(root), args.private_name)
     if findings:
         print("PUBLIC_RELEASE_CHECK_FAILED")
         for finding in findings:

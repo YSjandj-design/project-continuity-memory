@@ -17,6 +17,13 @@ All notable changes to this project will be documented in this file.
 
 - Continuity files are now treated as a co-located pair rather than selecting
   the nearest ancestor containing either file.
+- Character-budget warnings and hard limits are now 6,000/8,000 for
+  `HANDOFF.md` and 10,000/14,000 for `PROJECT_MEMORY.md`.
+
+### Security
+
+- The public-release privacy gate now scans its own source and accepts optional
+  `--private-name` markers instead of embedding a real person's name.
 
 ## 0.1.0 - 2026-07-30
 

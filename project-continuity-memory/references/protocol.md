@@ -140,8 +140,8 @@ possibilities as open questions instead of silently choosing.
 
 | File | Target | Warning threshold | Hard limit |
 |---|---:|---:|---:|
-| `PROJECT_MEMORY.md` | up to 120 lines | 160 lines or 8,000 characters | 240 lines or 12,000 characters |
-| `HANDOFF.md` | up to 80 lines | 100 lines or 4,000 characters | 140 lines or 6,000 characters |
+| `PROJECT_MEMORY.md` | up to 120 lines | 160 lines or 10,000 characters | 240 lines or 14,000 characters |
+| `HANDOFF.md` | up to 80 lines | 100 lines or 6,000 characters | 140 lines or 8,000 characters |
 
 When over target, remove duplication, completed temporary details, and content
 that can be replaced by a link. Never meet a budget by removing binding decisions,
